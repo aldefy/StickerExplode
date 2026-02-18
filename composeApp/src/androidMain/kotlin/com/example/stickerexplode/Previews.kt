@@ -4,13 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.stickerexplode.model.StickerType
 
-@Preview
+@Preview(widthDp = 412, heightDp = 915)
 @Composable
 fun AppPreview() {
     App()
 }
 
-@Preview
+@Preview(widthDp = 412, heightDp = 915)
 @Composable
 fun StickerCanvasPreview() {
     StickerCanvas()

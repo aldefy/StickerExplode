@@ -55,7 +55,7 @@ fun StickerCanvas() {
 
     Box(modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(
-            modifier = Modifier.fillMaxSize().background(Color(0xFFEFF1FE)),
+            modifier = Modifier.fillMaxSize().background(Color(0xFFF2F2F7)),
         ) {
             val maxW = constraints.maxWidth.toFloat()
             val maxH = constraints.maxHeight.toFloat()
@@ -209,7 +209,16 @@ fun StickerVisual(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(if (type == StickerType.HELLO_TEXT) 120.dp else 80.dp)
+            .size(
+                when (type) {
+                    StickerType.HELLO_TEXT -> 200.dp
+                    StickerType.BUILD_ICON -> 170.dp
+                    StickerType.CODE_ICON -> 150.dp
+                    StickerType.KOTLIN_LOGO -> 100.dp
+                    StickerType.HEART -> 90.dp
+                    else -> 80.dp
+                }
+            )
             .stickerCutout(liftFraction = liftFraction)
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .let { mod -> if (tiltState != null) mod.holographicShine(tiltState) else mod },
@@ -289,7 +298,7 @@ private fun Modifier.stickerCutout(
 
 @Composable
 private fun KotlinLogoSticker() {
-    Canvas(modifier = Modifier.size(50.dp)) {
+    Canvas(modifier = Modifier.size(75.dp)) {
         val w = size.width
         val h = size.height
         // Kotlin diamond shape
@@ -316,7 +325,7 @@ private fun KotlinLogoSticker() {
 private fun HelloTextSticker() {
     Text(
         text = "hello",
-        fontSize = 32.sp,
+        fontSize = 52.sp,
         fontWeight = FontWeight.Bold,
         fontStyle = FontStyle.Italic,
         color = Color(0xFF2D2D2D),
@@ -332,7 +341,7 @@ private fun BuildIconSticker() {
                 brush = Brush.linearGradient(
                     colors = listOf(Color(0xFF00D2FF), Color(0xFF0B84FF)),
                 ),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(20.dp),
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -340,7 +349,7 @@ private fun BuildIconSticker() {
             imageVector = Icons.Filled.Build,
             contentDescription = "Build",
             tint = Color.White,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(72.dp),
         )
     }
 }
@@ -354,7 +363,7 @@ private fun CodeIconSticker() {
                 brush = Brush.linearGradient(
                     colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2)),
                 ),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(20.dp),
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -362,7 +371,7 @@ private fun CodeIconSticker() {
             imageVector = Icons.Filled.Code,
             contentDescription = "Code",
             tint = Color.White,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(64.dp),
         )
     }
 }
