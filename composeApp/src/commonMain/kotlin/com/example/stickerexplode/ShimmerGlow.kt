@@ -4,9 +4,11 @@ import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.RadialGradientShader
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
@@ -20,29 +22,28 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-private val RainbowColors = listOf(
-    Color.Red,
-    Color.Yellow,
-    Color.Green,
-    Color.Cyan,
-    Color.Blue,
-    Color.Magenta,
-    Color.Red,
+// ── Public API ──────────────────────────────────────────────────────────────
+
+fun Modifier.holographicShine(tiltState: State<TiltData>): Modifier =
+    this then HolographicShineElement(tiltState)
+
+// ── expect/actual for platform-specific renderer ────────────────────────────
+
+expect fun createHolographicNode(tiltState: State<TiltData>): HolographicBaseNode
+
+// ── Common 3-layer fallback renderer ────────────────────────────────────────
+
+private val IridescentColors = listOf(
+    Color(0xFFE0D4FF), // soft lavender
+    Color(0xFFD0EAFF), // pale sky
+    Color(0xFFD4F0E0), // soft mint
+    Color(0xFFFFECD0), // warm cream
+    Color(0xFFFFD8D8), // blush pink
+    Color(0xFFE0D4FF), // soft lavender (wrap)
 )
 
-fun Modifier.shimmerGlow(tiltState: State<TiltData>): Modifier =
-    this then ShimmerGlowElement(tiltState)
-
-private data class ShimmerGlowElement(
-    val tiltState: State<TiltData>,
-) : ModifierNodeElement<ShimmerGlowNode>() {
-    override fun create() = ShimmerGlowNode(tiltState)
-    override fun update(node: ShimmerGlowNode) {
-        node.tiltState = tiltState
-    }
-}
-
-private class AngledRainbowBrush(
+/** Layer 1: Iridescent thin-film gradient — angle rotates with roll, offset shifts with pitch */
+private class IridescentBrush(
     private val angleDeg: Float,
     private val offset: Offset,
 ) : ShaderBrush() {
@@ -61,16 +62,60 @@ private class AngledRainbowBrush(
         return LinearGradientShader(
             from = Offset(startX, startY),
             to = Offset(endX, endY),
-            colors = RainbowColors,
+            colors = IridescentColors,
             colorStops = null,
-            tileMode = TileMode.Mirror,
+            tileMode = TileMode.Clamp,
         )
     }
 }
 
-private class ShimmerGlowNode(
-    var tiltState: State<TiltData>,
-) : DrawModifierNode, Modifier.Node() {
+/** Layer 2: Specular hotspot — white radial that tracks tilt position */
+private class SpecularBrush(
+    private val centerX: Float,
+    private val centerY: Float,
+) : ShaderBrush() {
+    override fun createShader(size: Size): Shader {
+        val cx = size.width * centerX
+        val cy = size.height * centerY
+        val radius = maxOf(size.width, size.height) * 0.8f
+        return RadialGradientShader(
+            center = Offset(cx, cy),
+            radius = radius,
+            colors = listOf(Color.White, Color.Transparent),
+            colorStops = listOf(0f, 1f),
+            tileMode = TileMode.Clamp,
+        )
+    }
+}
+
+/** Layer 3: Fresnel edge glow — transparent center → white edges */
+private class FresnelBrush(
+    private val intensity: Float,
+) : ShaderBrush() {
+    override fun createShader(size: Size): Shader {
+        val center = size.center
+        val radius = maxOf(size.width, size.height) * 0.5f
+        return RadialGradientShader(
+            center = center,
+            radius = radius,
+            colors = listOf(Color.Transparent, Color.White.copy(alpha = intensity)),
+            colorStops = listOf(0.3f, 1f),
+            tileMode = TileMode.Clamp,
+        )
+    }
+}
+
+// ── Base node class ─────────────────────────────────────────────────────────
+
+abstract class HolographicBaseNode : DrawModifierNode, Modifier.Node() {
+    abstract var tiltState: State<TiltData>
+}
+
+// ── Common fallback node (used by iOS and Android < 33) ─────────────────────
+
+class HolographicFallbackNode(
+    override var tiltState: State<TiltData>,
+) : HolographicBaseNode() {
 
     override fun ContentDrawScope.draw() {
         drawContent()
@@ -78,23 +123,44 @@ private class ShimmerGlowNode(
         val tilt = tiltState.value
         val roll = tilt.roll.coerceIn(-1f, 1f)
         val pitch = tilt.pitch.coerceIn(-1f, 1f)
+        val tiltMagnitude = sqrt(roll * roll + pitch * pitch).coerceIn(0f, 1f)
 
-        // Roll rotates the rainbow angle, pitch shifts the gradient position
-        val angleDeg = 45f + roll * 60f
-        val offsetX = roll * size.width * 0.5f
-        val offsetY = pitch * size.height * 0.5f
-
-        val rainbowBrush = AngledRainbowBrush(
-            angleDeg = angleDeg,
-            offset = Offset(offsetX, offsetY),
-        )
-
-        // SrcAtop: only draws where content already exists (respects sticker shape)
-        // TileMode.Mirror gives a smooth repeating rainbow across the surface
+        // Layer 1: Iridescent gradient — single smooth sweep
+        val angleDeg = 45f + roll * 45f
+        val offsetX = roll * size.width * 0.4f
+        val offsetY = pitch * size.height * 0.4f
         drawRect(
-            brush = rainbowBrush,
-            alpha = 0.13f + abs(roll) * 0.07f + abs(pitch) * 0.07f,
+            brush = IridescentBrush(angleDeg, Offset(offsetX, offsetY)),
+            alpha = 0.12f + tiltMagnitude * 0.06f,
             blendMode = BlendMode.SrcAtop,
         )
+
+        // Layer 2: Specular glint
+        val specCx = 0.5f + roll * 0.4f
+        val specCy = 0.5f + pitch * 0.4f
+        drawRect(
+            brush = SpecularBrush(specCx, specCy),
+            alpha = 0.25f,
+            blendMode = BlendMode.Screen,
+        )
+
+        // Layer 3: Fresnel edge glow
+        val fresnelAlpha = 0.03f + tiltMagnitude * 0.06f
+        drawRect(
+            brush = FresnelBrush(intensity = fresnelAlpha * 2.5f),
+            alpha = fresnelAlpha,
+            blendMode = BlendMode.SrcAtop,
+        )
+    }
+}
+
+// ── ModifierNodeElement ─────────────────────────────────────────────────────
+
+private data class HolographicShineElement(
+    val tiltState: State<TiltData>,
+) : ModifierNodeElement<HolographicBaseNode>() {
+    override fun create(): HolographicBaseNode = createHolographicNode(tiltState)
+    override fun update(node: HolographicBaseNode) {
+        node.tiltState = tiltState
     }
 }

@@ -212,7 +212,7 @@ fun StickerVisual(
             .size(if (type == StickerType.HELLO_TEXT) 120.dp else 80.dp)
             .stickerCutout(liftFraction = liftFraction)
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .let { mod -> if (tiltState != null) mod.shimmerGlow(tiltState) else mod },
+            .let { mod -> if (tiltState != null) mod.holographicShine(tiltState) else mod },
     ) {
         when {
             type == StickerType.KOTLIN_LOGO -> KotlinLogoSticker()
@@ -242,11 +242,12 @@ private fun Modifier.stickerCutout(
     val shadowSpread = outlinePx + (1.dp.toPx() + liftFraction * 3.dp.toPx()) // +1dp → +4dp
     val shadowOffsetY = 1.dp.toPx() + liftFraction * 3.dp.toPx()             // 1dp → 4dp
 
+    val shadowSteps = 16
     val shadowPaint = Paint().apply {
-        colorFilter = ColorFilter.tint(Color.Black.copy(alpha = shadowAlpha), BlendMode.SrcIn)
+        colorFilter = ColorFilter.tint(Color.Black.copy(alpha = shadowAlpha / 2f), BlendMode.SrcIn)
     }
-    for (i in 0 until 8) {
-        val angle = (2.0 * PI * i / 8).toFloat()
+    for (i in 0 until shadowSteps) {
+        val angle = (2.0 * PI * i / shadowSteps).toFloat()
         val dx = shadowSpread * cos(angle)
         val dy = shadowSpread * sin(angle) + shadowOffsetY
         drawIntoCanvas { canvas ->
