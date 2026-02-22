@@ -98,4 +98,4 @@ iOS: open `iosApp/iosApp.xcodeproj` in Xcode, pick a simulator, hit Run.
 
 ## Acknowledgments
 
-This README was written with [Claude](https://claude.ai). The code is mine.
+README written with help from [Claude](https://claude.ai).
