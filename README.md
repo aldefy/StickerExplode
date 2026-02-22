@@ -3,18 +3,14 @@
 A sticker canvas app built with Compose Multiplatform. Place, drag, rotate, pinch-to-scale, and peel off stickers with spring physics, holographic shimmer, and haptic feedback. Runs on Android and iOS from shared Kotlin code.
 
 <p align="center">
-  <img src="assets/sticker_demo.gif" width="280" alt="Demo"/>
+  <img src="assets/sticker_demo.gif" width="360" alt="Demo"/>
 </p>
 
 ## Screenshots
 
-<p align="center">
-  <img src="assets/sticker_canvas.jpg" width="280" alt="Sticker Canvas"/>
-  &nbsp;&nbsp;
-  <img src="assets/sticker_tray.jpg" width="280" alt="Sticker Tray"/>
-  &nbsp;&nbsp;
-  <img src="assets/drag_demo.jpg" width="280" alt="Drag Demo"/>
-</p>
+| Canvas | Sticker tray | Drag + rotate |
+|--------|-------------|---------------|
+| <img src="assets/sticker_canvas.jpg" width="240"/> | <img src="assets/sticker_tray.jpg" width="240"/> | <img src="assets/drag_demo.jpg" width="240"/> |
 
 ## Blog series
 
