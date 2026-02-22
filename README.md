@@ -12,13 +12,17 @@ A sticker canvas app built with Compose Multiplatform. Place, drag, rotate, pinc
 |--------|-------------|---------------|
 | <img src="assets/sticker_canvas.jpg" width="240"/> | <img src="assets/sticker_tray.jpg" width="240"/> | <img src="assets/drag_demo.jpg" width="240"/> |
 
+## Inspiration
+
+Apple's WWDC sticker animations. The way stickers peel off, tilt toward your finger, and cast shadows when you grab them. I wanted to see how close I could get in Compose, and whether the same code could run on iOS too.
+
 ## Blog series
 
-I wrote a three-part series walking through how everything works, from gesture handling down to the shader code:
+I wrote a three-part series walking through how everything works:
 
 1. [Part 1: Gestures, physics, and making stickers feel real](https://aditlal.dev/building-stickerexplode-part-1-gestures-physics-and-making-stickers-feel-real/) - architecture, data model, gesture system, spring physics
 2. [Part 2: The peel-off effect and holographic shimmer](https://aditlal.dev/stickerexplode-part-2/) - four simultaneous peel animations, AGSL shader for iridescence, tilt-reactive shimmer with iOS fallback
-3. [Part 3: The full end-to-end build](https://aditlal.dev/stickerexplode-part-3/) - die-cut outlines (stamp technique), tilt sensors, haptics, persistence, and the five expect/actual boundaries
+3. [Part 3: The full end-to-end build](https://aditlal.dev/stickerexplode-part-3/) - die-cut outlines (stamp technique), tilt sensors, haptics, and the three expect/actual boundaries
 
 ## What's in here
 
@@ -34,46 +38,29 @@ I wrote a three-part series walking through how everything works, from gesture h
 
 ## How it's built
 
-The interesting parts are the gesture system and the visual effects. Three `pointerInput` blocks handle drag, transform, and tap separately. The peel-off runs four animations at once, all on spring specs so they feel physical rather than tweened:
+Three `pointerInput` blocks handle drag, transform, and tap separately. The peel-off runs four animations at once, all on spring specs so they feel physical rather than tweened:
 
 ```
-Peel-off grab (4 simultaneous spring animations)
+Peel-off grab
 
-  At rest                 On grab                    On release
-
-  +------+                  +--------+               +------+
-  |      |    scale      ,--|        |--,    spring   |      |
-  | 1.0x |    ------>   /   |  1.08x |   \  back     | 1.0x |
-  |      |             /    |  tilted |    \          |      |
-  +------+            '     +--------+     '         +------+
-  ------             tilt toward touch       ------
-  no shadow          point + lift 8dp       no shadow
-                     shadow grows +
-                     softens underneath
+  at rest        on grab                on release
+  +------+         +--------+            +------+
+  |      |  -->  ,-|  1.08x |-,  -->     |      |
+  | 1.0x |      /  |  tilted | \  spring | 1.0x |
+  +------+     '   +--------+  ' back    +------+
+  no shadow    tilt toward finger         no shadow
+               shadow grows underneath
 ```
 
-The holographic shimmer uses three optical layers: thin-film iridescence, specular reflection, and Fresnel edge glow. On Android 13+ this runs as an AGSL shader. On iOS and older Android, a gradient brush approximation does the job. Tilt data comes from the accelerometer, smoothed with springs to avoid jitter.
+The holographic shimmer uses three optical layers: thin-film iridescence, specular reflection, and Fresnel edge glow. On Android 13+ this runs as an AGSL shader. On iOS and older Android, a gradient brush approximation gets close enough. Tilt data comes from the accelerometer, smoothed with springs to avoid jitter.
 
-Die-cut borders use a stamp technique:
+Die-cut borders use a stamp technique: draw the sticker image 32 times at tiny offsets, all tinted white, so they merge into one fat outline. Then draw the real sticker centered on top. Ends up looking like a vinyl die-cut.
 
-```
-Die-cut stamp technique
+## Platform boundaries
 
-  Step 1: Stamp 32x          Step 2: Overlap             Step 3: Layer on top
+Only three `expect`/`actual` declarations in the whole project: tilt sensor, haptic feedback, and the holographic shader node.
 
-     +--+  +--+              +------+                     +------+
-    +--+| +--+|              |      |                     | ,--. |
-    |  || |  ||   x32        | white|  = thick white      | |  | |  real sticker
-    +--+| +--+|   at tiny    | blob |    silhouette       | '--' |  on top
-     +--+  +--+   offsets    |      |                     +------+
-                              +------+
-  each copy tinted           all 32 merge into          draw original centered
-  solid white                one fat outline             on the white shape
-```
-
-Looks like a real die-cut vinyl sticker.
-
-Three `expect`/`actual` boundaries: tilt sensor, haptic feedback, and the holographic shader node. That's all the platform code.
+That's it. Gestures, animations, the canvas, the peel-off, die-cut borders -- all shared Kotlin.
 
 ## Project structure
 
@@ -109,6 +96,6 @@ iOS: open `iosApp/iosApp.xcodeproj` in Xcode, pick a simulator, hit Run.
 - JDK 17+
 - Xcode 15+ (for iOS)
 
-## License
+## Acknowledgments
 
-This project is provided as a sample/demo.
+This README was written with [Claude](https://claude.ai). The code is mine.
