@@ -34,7 +34,7 @@ I wrote a three-part series walking through how everything works, from gesture h
 - Haptic feedback on grab, drop, tap, and selection (platform-native)
 - Z-ordering: tapped stickers come to front
 - Bottom sheet sticker tray with 16 sticker types
-- State persistence via debounced JSON serialization to DataStore
+- No persistence yet (stickers reset on app restart)
 
 ## How it's built
 
@@ -44,7 +44,7 @@ The holographic shimmer uses three optical layers: thin-film iridescence, specul
 
 Die-cut borders use a stamp technique: draw the sticker 32 times at small offsets with a white tint, then draw the real sticker on top. Looks like a real die-cut vinyl sticker.
 
-There are five `expect`/`actual` boundaries total: tilt sensor, haptic feedback, shader availability check, DataStore path, and the main view controller. Not much platform code.
+Three `expect`/`actual` boundaries: tilt sensor, haptic feedback, and the holographic shader node. That's all the platform code.
 
 ## Project structure
 
