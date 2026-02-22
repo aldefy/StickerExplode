@@ -1,5 +1,4 @@
 pluginManagement {
-    includeBuild("/Users/adit/Documents/composeproof")
     repositories {
         google()
         mavenCentral()
