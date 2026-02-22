@@ -34,11 +34,44 @@ I wrote a three-part series walking through how everything works, from gesture h
 
 ## How it's built
 
-The interesting parts are the gesture system and the visual effects. Three `pointerInput` blocks handle drag, transform, and tap separately. The peel-off runs four animations at once (scale, tilt, translation, shadow elevation), all on spring specs so they feel physical rather than tweened.
+The interesting parts are the gesture system and the visual effects. Three `pointerInput` blocks handle drag, transform, and tap separately. The peel-off runs four animations at once, all on spring specs so they feel physical rather than tweened:
+
+```
+Peel-off grab (4 simultaneous spring animations)
+
+  At rest                 On grab                    On release
+
+  +------+                  +--------+               +------+
+  |      |    scale      ,--|        |--,    spring   |      |
+  | 1.0x |    ------>   /   |  1.08x |   \  back     | 1.0x |
+  |      |             /    |  tilted |    \          |      |
+  +------+            '     +--------+     '         +------+
+  ------             tilt toward touch       ------
+  no shadow          point + lift 8dp       no shadow
+                     shadow grows +
+                     softens underneath
+```
 
 The holographic shimmer uses three optical layers: thin-film iridescence, specular reflection, and Fresnel edge glow. On Android 13+ this runs as an AGSL shader. On iOS and older Android, a gradient brush approximation does the job. Tilt data comes from the accelerometer, smoothed with springs to avoid jitter.
 
-Die-cut borders use a stamp technique: draw the sticker 32 times at small offsets with a white tint, then draw the real sticker on top. Looks like a real die-cut vinyl sticker.
+Die-cut borders use a stamp technique:
+
+```
+Die-cut stamp technique
+
+  Step 1: Stamp 32x          Step 2: Overlap             Step 3: Layer on top
+
+     +--+  +--+              +------+                     +------+
+    +--+| +--+|              |      |                     | ,--. |
+    |  || |  ||   x32        | white|  = thick white      | |  | |  real sticker
+    +--+| +--+|   at tiny    | blob |    silhouette       | '--' |  on top
+     +--+  +--+   offsets    |      |                     +------+
+                              +------+
+  each copy tinted           all 32 merge into          draw original centered
+  solid white                one fat outline             on the white shape
+```
+
+Looks like a real die-cut vinyl sticker.
 
 Three `expect`/`actual` boundaries: tilt sensor, haptic feedback, and the holographic shader node. That's all the platform code.
 
