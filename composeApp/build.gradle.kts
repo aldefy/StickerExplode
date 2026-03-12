@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
+    id("io.github.aldefy.rebound") version "0.2.1"
 }
 
 kotlin {
@@ -32,6 +34,10 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.materialIconsExtended)
+            implementation(libs.navigation.compose)
+            implementation(libs.lifecycle.viewmodel.compose)
+            implementation(libs.datastore.preferences)
+            implementation(libs.serialization.json)
         }
         androidMain.dependencies {
             implementation(libs.activity.compose)
@@ -60,4 +66,8 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+}
+
+rebound {
+    enabled = true
 }

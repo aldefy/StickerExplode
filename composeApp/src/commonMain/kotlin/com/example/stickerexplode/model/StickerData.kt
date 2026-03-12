@@ -1,30 +1,38 @@
 package com.example.stickerexplode.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class StickerType(val label: String, val emoji: String?) {
     KOTLIN_LOGO("Kotlin", null),
-    GIFT("Gift", "🎁"),
-    DEVELOPER("Dev", "👩‍💻"),
+    GIFT("Gift", "\uD83C\uDF81"),
+    DEVELOPER("Dev", "\uD83D\uDC69\u200D\uD83D\uDCBB"),
     HELLO_TEXT("Hello", null),
     BUILD_ICON("Build", null),
     CODE_ICON("Code", null),
-    HEART("Heart", "😻"),
+    HEART("Heart", "\uD83D\uDE3B"),
     STAR("Star", "⭐"),
-    FIRE("Fire", "🔥"),
-    ROCKET("Rocket", "🚀"),
+    FIRE("Fire", "\uD83D\uDD25"),
+    ROCKET("Rocket", "\uD83D\uDE80"),
     SPARKLES("Sparkles", "✨"),
-    PARTY("Party", "🎉"),
-    THUMBS_UP("Thumbs Up", "👍"),
+    PARTY("Party", "\uD83C\uDF89"),
+    THUMBS_UP("Thumbs Up", "\uD83D\uDC4D"),
     LIGHTNING("Lightning", "⚡"),
-    RAINBOW("Rainbow", "🌈"),
-    EYES("Eyes", "👀"),
+    RAINBOW("Rainbow", "\uD83C\uDF08"),
+    EYES("Eyes", "\uD83D\uDC40"),
 }
 
+@Serializable
 data class StickerItem(
     val id: Int,
     val type: StickerType,
     val initialFractionX: Float,
     val initialFractionY: Float,
     val rotation: Float = 0f,
+    val offsetX: Float = Float.NaN,
+    val offsetY: Float = Float.NaN,
+    val pinchScale: Float = 1f,
+    val zIndex: Float = 0f,
 )
 
 val defaultStickers = listOf(

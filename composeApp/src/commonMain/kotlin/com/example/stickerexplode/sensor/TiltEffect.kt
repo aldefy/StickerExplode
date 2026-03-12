@@ -5,7 +5,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.runtime.*
 
 @Composable
-fun rememberTiltState(): State<TiltData> {
+fun rememberTiltState(enabled: Boolean = true): State<TiltData> {
+    if (!enabled) {
+        return remember { mutableStateOf(TiltData(0f, 0f)) }
+    }
+
     val provider = rememberTiltSensorProvider()
     var rawPitch by remember { mutableStateOf(0f) }
     var rawRoll by remember { mutableStateOf(0f) }

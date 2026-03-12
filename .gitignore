@@ -12,8 +12,6 @@
 *.xcworkspace
 *.xcuserdata
 /iosApp/Pods
-/.composeproof
-composeproof/
 .kotlin/
 .claude/
 .mcp.json

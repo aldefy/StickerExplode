@@ -1,29 +1,38 @@
 package com.example.stickerexplode
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -32,26 +41,27 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.stickerexplode.model.StickerItem
 import com.example.stickerexplode.model.StickerType
-import com.example.stickerexplode.model.defaultStickers
 import com.example.stickerexplode.haptics.HapticFeedbackProvider
 import com.example.stickerexplode.haptics.HapticType
 import com.example.stickerexplode.haptics.rememberHapticFeedback
 import com.example.stickerexplode.sensor.TiltData
 import com.example.stickerexplode.sensor.rememberTiltState
+import com.example.stickerexplode.viewmodel.CanvasViewModel
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.random.Random
 
 @Composable
-fun StickerCanvas() {
-    val tiltState = rememberTiltState()
+fun StickerCanvas(
+    viewModel: CanvasViewModel,
+    onNavigateToHistory: () -> Unit,
+) {
+    val sensorEnabled by viewModel.sensorEnabled.collectAsState()
+    val tiltState = rememberTiltState(enabled = sensorEnabled)
     val haptics = rememberHapticFeedback()
-    var zCounter by remember { mutableIntStateOf(0) }
-    val zIndices = remember { mutableStateMapOf<Int, Float>() }
-    val stickers = remember { mutableStateListOf(*defaultStickers.toTypedArray()) }
-    var nextId by remember { mutableIntStateOf(defaultStickers.size) }
+    val stickers by viewModel.stickers.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(
@@ -67,33 +77,93 @@ fun StickerCanvas() {
                     maxHeight = maxH,
                     tiltState = tiltState,
                     haptics = haptics,
-                    zIndex = zIndices[sticker.id] ?: 0f,
+                    zIndex = sticker.zIndex,
                     onTapped = {
-                        zCounter++
-                        zIndices[sticker.id] = zCounter.toFloat()
+                        viewModel.bringToFront(sticker.id)
+                    },
+                    onTransformChanged = { offsetX, offsetY, scale, rotation ->
+                        viewModel.updateStickerTransform(
+                            id = sticker.id,
+                            offsetX = offsetX,
+                            offsetY = offsetY,
+                            scale = scale,
+                            rotation = rotation,
+                        )
                     },
                 )
             }
         }
 
+        // History FAB — bottom-left
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomStart,
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    haptics.perform(HapticType.SelectionClick)
+                    onNavigateToHistory()
+                },
+                modifier = Modifier.padding(24.dp),
+                shape = CircleShape,
+                containerColor = Color.White,
+                contentColor = Color(0xFF5B5FE6),
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 12.dp,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.History,
+                    contentDescription = "Sticker history",
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+
+        // Sensor toggle FAB — bottom-right, above the + FAB
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    haptics.perform(HapticType.SelectionClick)
+                    viewModel.toggleSensor()
+                },
+                modifier = Modifier.padding(end = 24.dp, bottom = 96.dp),
+                shape = CircleShape,
+                containerColor = Color.White,
+                contentColor = if (sensorEnabled) Color(0xFF5B5FE6) else Color(0xFFAAAAAA),
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 12.dp,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = if (sensorEnabled) "Disable tilt sensor" else "Enable tilt sensor",
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+
+        // Tilt angle float — bottom center, glass design
+        AnimatedVisibility(
+            visible = sensorEnabled,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp),
+        ) {
+            TiltAngleFloat(tiltState)
+        }
+
         StickerTray(
             haptics = haptics,
             onStickerSelected = { type ->
-                val randomX = 0.15f + Random.nextFloat() * 0.5f
-                val randomY = 0.2f + Random.nextFloat() * 0.4f
-                val randomRotation = -15f + Random.nextFloat() * 30f
-                val id = nextId++
-                zCounter++
-                zIndices[id] = zCounter.toFloat()
-                stickers.add(
-                    StickerItem(
-                        id = id,
-                        type = type,
-                        initialFractionX = randomX,
-                        initialFractionY = randomY,
-                        rotation = randomRotation,
-                    )
-                )
+                viewModel.addSticker(type)
             },
         )
     }
@@ -108,16 +178,22 @@ private fun DraggableSticker(
     haptics: HapticFeedbackProvider,
     zIndex: Float,
     onTapped: () -> Unit,
+    onTransformChanged: (offsetX: Float, offsetY: Float, scale: Float, rotation: Float) -> Unit,
 ) {
+    // Initialize from persisted state if available, otherwise from fraction
     var offset by remember {
         mutableStateOf(
-            Offset(
-                sticker.initialFractionX * maxWidth,
-                sticker.initialFractionY * maxHeight,
-            )
+            if (!sticker.offsetX.isNaN() && !sticker.offsetY.isNaN()) {
+                Offset(sticker.offsetX, sticker.offsetY)
+            } else {
+                Offset(
+                    sticker.initialFractionX * maxWidth,
+                    sticker.initialFractionY * maxHeight,
+                )
+            }
         )
     }
-    var pinchScale by remember { mutableFloatStateOf(1f) }
+    var pinchScale by remember { mutableFloatStateOf(sticker.pinchScale) }
     var rotation by remember { mutableFloatStateOf(sticker.rotation) }
     var isZoomedIn by remember { mutableStateOf(false) }
     val doubleTapScale by animateFloatAsState(
@@ -179,6 +255,7 @@ private fun DraggableSticker(
                         if (event.changes.all { !it.pressed } && isDragging) {
                             isDragging = false
                             haptics.perform(HapticType.MediumImpact)
+                            onTransformChanged(offset.x, offset.y, pinchScale, rotation)
                         }
                     }
                 }
@@ -197,6 +274,55 @@ private fun DraggableSticker(
             },
     ) {
         StickerVisual(type = sticker.type, liftFraction = liftFraction, tiltState = tiltState)
+    }
+}
+
+/**
+ * Small frosted-glass float showing the phone's roll angle (left/right tilt).
+ * Roll is normalized [-1, 1] — we convert to degrees [-90°, 90°].
+ */
+@Composable
+private fun TiltAngleFloat(tiltState: State<TiltData>) {
+    val tilt by tiltState
+    val degrees = (tilt.roll * 90f).roundToInt()
+    val direction = when {
+        degrees < -2 -> "L"
+        degrees > 2 -> "R"
+        else -> ""
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.55f))
+            .border(
+                width = 0.5.dp,
+                color = Color.White.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            // Tilt dot — shifts horizontally with roll
+            val dotOffset = (tilt.roll * 8f).coerceIn(-8f, 8f)
+            Canvas(modifier = Modifier.size(6.dp).offset(x = dotOffset.dp)) {
+                drawCircle(
+                    color = if (abs(degrees) > 30) Color(0xFFFF6B6B) else Color(0xFF5B5FE6),
+                    radius = size.minDimension / 2f,
+                )
+            }
+
+            Text(
+                text = "${abs(degrees)}°$direction",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF2D2D2D).copy(alpha = 0.8f),
+            )
+        }
     }
 }
 
